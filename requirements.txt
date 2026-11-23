@@ -4,3 +4,4 @@ gymnasium[classic-control]==1.4.0   # 환경 규칙 reset·step + 내장 CartPol
 torch>=2.2                       # Q-network (PyTorch)
 matplotlib>=3.7                  # 학습 곡선·궤적 그래프 (그림 저장용 Pillow 포함)
 numpy
+stable-baselines3[extra]
