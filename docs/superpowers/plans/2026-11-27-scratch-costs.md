@@ -12,7 +12,9 @@ Tasks:
 - [x] RED/GREEN independent work/torque reward deltas and validation tests.
 - [x] Add CLI overrides and fresh-start metadata; extend real train/eval test.
 - [x] Add reproducible factorial runner with predeclared protocol and completion checks.
-- [ ] Run tests, commit code, launch 12 fresh runs; evaluate and summarize all.
-- [ ] Review, new PR, Notion result update and labeled GIFs.
+- [x] Run tests, commit code, launch 12 fresh runs; evaluate and summarize all.
+- [x] Review, new PR, Notion result update and labeled GIFs.
 
 Review: independent read-only reviewer found no concrete bug. 38 tests pass; 12-run short end-to-end study passed fresh initialization audit. Fixed checkpoint paths use matching normalization. Main study additionally evaluates 100k/250k/500k/750k/final, all from training step zero.
+
+2026-11-28: all 12 runs completed; all start from step0/fresh normalization, final1,000,448 each; 60 fixed checkpoint evaluations ×300 =18,000 episodes. Final mean success: none98.78%, torque32.11%, work0%, both0%. No four-way common-success efficiency estimate is possible. Seed42-only torque cost improvement is exploratory, not population evidence. Summarizer reviewed for seed weighting/null handling; smoke and full datasets executed successfully.

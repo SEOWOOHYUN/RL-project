@@ -136,3 +136,11 @@ Each run trains **a total** of 1,000,448 steps (1,000,000 rounded to a 1,024-ste
 `config.json` records initial policy SHA256, observation count=0.0001, and num_timesteps=0. `initialization-audit.json` verifies matched initial parameters across conditions within a seed, distinct parameters across seeds, and no warmed normalization. Existing run directories are never overwritten. Any failed run remains explicit in `status.json` and makes the study fail; no seed is silently excluded.
 
 Report per-seed success and mean/sample SD across training seeds. Do not treat all episodes pooled across seeds as independent training replications. Compare costs on common successful goals within each seed as well as all-episode and individual-success summaries; no common successes means missing efficiency evidence, not zero cost. Absolute mechanical work is not electrical energy consumption.
+
+After all runs finish, summarize all predeclared checkpoints without selection:
+
+```bash
+python scripts/summarize_torque_study.py runs/scratch-study
+```
+
+The summarizer requires the complete initialization audit and writes summary.json/CSV, a learning curve, and report.md. Missing runs/checkpoints fail rather than being excluded.
