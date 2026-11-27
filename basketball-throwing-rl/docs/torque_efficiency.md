@@ -113,3 +113,26 @@ python scripts/torque_experiment.py evaluate \
 - MuJoCo actuator/제약: https://mujoco.readthedocs.io/en/stable/XMLreference.html
 
 본 PR 검증은 환경 동작과 학습 파이프라인의 실행 가능성까지입니다. 수렴, 높은 성공률, 동작 효율 개선은 충분한 학습과 위 비교 실험 후 판단해야 합니다.
+
+## From-scratch split-cost study (2026-11-27)
+
+PR #1's historical fine-tuning results do not answer a from-scratch reward comparison. The new study initializes PPO weights, optimizer and VecNormalize from zero for **every** run. Three seeds (42,43,44) are crossed with four conditions:
+
+| condition | normalized torque weight | absolute work weight (per J) |
+|---|---:|---:|
+| none | 0 | 0 |
+| torque | 0.5 | 0 |
+| work | 0 | 0.02 |
+| both | 0.5 | 0.02 |
+
+The time penalty remains 0.1 in all conditions (`time` preset). Weights correspond to a reward penalty of one at C=2 s or W_abs=50 J; they are fixed initial choices, not tuned optima. Reward subtracts each physics-integrated cost's increment for the current control interval, not the episode cumulative total again. `work_weight=0` preserves older run configurations.
+
+```bash
+python scripts/torque_study.py --out runs/scratch-study --workers 6 --timesteps 1000000 --seeds 42 43 44
+```
+
+Each run trains **a total** of 1,000,448 steps (1,000,000 rounded to a 1,024-step PPO rollout), never an additional budget on pretrained weights. Goals are randomized on every reset: x=[1,1.5], z=[0.75,1.1], y=0. `protocol.json` freezes 300 evaluation targets before starting. Evaluate saved checkpoints at 100k,250k,500k,750k and final using each checkpoint's matching VecNormalize. No best-checkpoint selection, and no evaluation-driven reward changes.
+
+`config.json` records initial policy SHA256, observation count=0.0001, and num_timesteps=0. `initialization-audit.json` verifies matched initial parameters across conditions within a seed, distinct parameters across seeds, and no warmed normalization. Existing run directories are never overwritten. Any failed run remains explicit in `status.json` and makes the study fail; no seed is silently excluded.
+
+Report per-seed success and mean/sample SD across training seeds. Do not treat all episodes pooled across seeds as independent training replications. Compare costs on common successful goals within each seed as well as all-episode and individual-success summaries; no common successes means missing efficiency evidence, not zero cost. Absolute mechanical work is not electrical energy consumption.

@@ -24,13 +24,14 @@ class TorqueConfig:
     distance_weight: float = 0.4
     time_weight: float = 0.1
     effort_weight: float = 0.05
+    work_weight: float = 0.0  # reward penalty per joule of absolute mechanical work
 
     def __post_init__(self):
         for name in ('episode_time', 'control_dt', 'success_reward', 'failure_penalty'):
             value = getattr(self, name)
             if not np.isfinite(value) or value <= 0:
                 raise ValueError(f'{name} must be finite and positive')
-        for name in ('success_margin', 'distance_weight', 'time_weight', 'effort_weight'):
+        for name in ('success_margin', 'distance_weight', 'time_weight', 'effort_weight', 'work_weight'):
             value = getattr(self, name)
             if not np.isfinite(value) or value < 0:
                 raise ValueError(f'{name} must be finite and nonnegative')
@@ -197,6 +198,7 @@ class BasketballTorqueEnv(BasketballThrowEnv):
             self.data.eq_active[self.weld_id] = 0
         start_time = self.data.time
         start_effort = self.normalized_effort
+        start_work = self.work
         prev = self._ball_position()
         initial_distance = float(np.linalg.norm(prev - self.target))
         success, reason = False, 'running'
@@ -237,9 +239,10 @@ class BasketballTorqueEnv(BasketballThrowEnv):
         distance_reward = self.cfg.distance_weight * progress
         time_cost = self.cfg.time_weight * (self.data.time - start_time)
         effort_cost = self.cfg.effort_weight * (self.normalized_effort - start_effort)
+        work_cost = self.cfg.work_weight * (self.work - start_work)
         terminal_reward = self.cfg.success_reward if success else (-self.cfg.failure_penalty if self._done else 0.)
-        reward = distance_reward + terminal_reward - time_cost - effort_cost
+        reward = distance_reward + terminal_reward - time_cost - effort_cost - work_cost
         info = self._info(success, reason)
         info.update(distance_reward=distance_reward, time_cost=time_cost,
-                    effort_cost=effort_cost, terminal_reward=terminal_reward)
+                    effort_cost=effort_cost, work_cost=work_cost, terminal_reward=terminal_reward)
         return self._obs(), float(reward), bool(terminated), bool(truncated), info

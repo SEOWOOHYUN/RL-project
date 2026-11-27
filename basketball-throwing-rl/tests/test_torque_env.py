@@ -180,3 +180,34 @@ def test_zero_torque_release_has_no_overlap_or_artificial_launch_impulse():
     env.step([0, 0, 1])
     np.testing.assert_allclose(env._ball_velocity(), [0, 0, -.1962], atol=1e-5)
     np.testing.assert_allclose(env._ball_position() - start, [0, 0, -.001962], atol=1e-6)
+
+
+def test_split_costs_change_rewards_not_physics_and_use_step_deltas():
+    configs = [(0., 0.), (.5, 0.), (0., .02), (.5, .02)]
+    envs = [BasketballTorqueEnv(TorqueConfig(effort_weight=t, work_weight=w)) for t, w in configs]
+    try:
+        for env in envs:
+            env.reset(seed=17)
+        previous_c = previous_w = 0.
+        for _ in range(5):
+            results = [env.step([.7, -.4, -1]) for env in envs]
+            base = results[0]
+            c = base[4]['normalized_effort'] - previous_c
+            w = base[4]['absolute_work_j'] - previous_w
+            assert w > 0
+            for (t_weight, w_weight), result in zip(configs, results):
+                np.testing.assert_array_equal(result[0], base[0])
+                assert result[1] == pytest.approx(base[1] - t_weight*c - w_weight*w)
+                assert result[4]['work_cost'] == pytest.approx(w_weight*w)
+                assert result[4]['effort_cost'] == pytest.approx(t_weight*c)
+            previous_c = base[4]['normalized_effort']
+            previous_w = base[4]['absolute_work_j']
+    finally:
+        for env in envs:
+            env.close()
+
+
+@pytest.mark.parametrize('value', [-1., float('nan'), float('inf')])
+def test_work_weight_rejects_invalid_values(value):
+    with pytest.raises(ValueError):
+        TorqueConfig(work_weight=value)

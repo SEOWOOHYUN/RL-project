@@ -50,11 +50,17 @@ def test_real_ppo_train_save_reload_and_paired_evaluate(tmp_path):
     run = tmp_path / 'run'
     subprocess.run([sys.executable, str(script), 'train', '--out', str(run),
                     '--timesteps', '64', '--n-steps', '32', '--batch-size', '16',
-                    '--seed', '3'], check=True, capture_output=True, text=True)
+                    '--seed', '3', '--effort-weight', '.5', '--work-weight', '.02'], check=True, capture_output=True, text=True)
     assert (run / 'final_model.zip').exists()
     assert (run / 'vecnormalize.pkl').exists()
     config = json.loads((run / 'config.json').read_text())
     assert config['environment']['torque_limits'] == [8., 5.]
+    assert config['environment']['effort_weight'] == .5
+    assert config['environment']['work_weight'] == .02
+    assert config['initialization']['mode'] == 'from_scratch'
+    assert config['initialization']['num_timesteps'] == 0
+    assert config['initialization']['observation_count'] == pytest.approx(.0001)
+    assert len(config['initialization']['policy_sha256']) == 64
     outputs = []
     for name in ('eval1', 'eval2'):
         out = tmp_path / name
@@ -66,3 +72,13 @@ def test_real_ppo_train_save_reload_and_paired_evaluate(tmp_path):
     assert outputs[0]['summary']['episodes'] == 4
     assert len(outputs[0]['per_target']) == 2
     assert len(outputs[0]['episodes']) == 4
+
+
+def test_fixed_checkpoint_paths_do_not_fall_back_to_final(tmp_path):
+    from scripts.torque_experiment import checkpoint_paths
+    model, norm = checkpoint_paths(tmp_path, 100000)
+    assert model == tmp_path / 'checkpoints/torque_ppo_100000_steps.zip'
+    assert norm == tmp_path / 'checkpoints/torque_ppo_vecnormalize_100000_steps.pkl'
+    assert checkpoint_paths(tmp_path, None) == (tmp_path/'final_model.zip', tmp_path/'vecnormalize.pkl')
+    with pytest.raises(ValueError):
+        checkpoint_paths(tmp_path, -1)
